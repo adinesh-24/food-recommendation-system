@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, UtensilsCrossed, UserCircle, LogOut, LogIn, LucideMenu } from "lucide-react";
+import { Menu, UtensilsCrossed, UserCircle, LogOut, LogIn, LucideMenu, Info } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Navbar = () => {
@@ -55,10 +55,10 @@ const Navbar = () => {
                 Generate Meal Plan
               </Link>
               <Link
-                to="/my-plans"
+                to="/about"
                 className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
-                My Plans
+                About Us
               </Link>
             </div>
           </div>
@@ -80,12 +80,6 @@ const Navbar = () => {
                     <Link to="/profile" className="cursor-pointer w-full">
                       <UserCircle className="mr-2 h-4 w-4" />
                       <span>Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/my-plans" className="cursor-pointer w-full">
-                      <UtensilsCrossed className="mr-2 h-4 w-4" />
-                      <span>My Plans</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -146,11 +140,11 @@ const Navbar = () => {
                       Generate Meal Plan
                     </Link>
                     <Link
-                      to="/my-plans"
+                      to="/about"
                       className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      My Plans
+                      About Us
                     </Link>
                     
                     {user ? (

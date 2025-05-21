@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import MyPlans from "./pages/MyPlans";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import { initializeFirestoreCollections } from "./config/initFirestore";
@@ -44,6 +45,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/my-plans" element={<MyPlans />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/about" element={<About />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
