@@ -1,4 +1,4 @@
-import { UserProfile, UserHistory, DietPlan } from "@/types";
+import { UserProfile, UserHistory, DietPlan, PlanHistoryEntry } from "@/types";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
@@ -46,7 +46,16 @@ export const addPlanToHistory = async (userId: string, plan: DietPlan) => {
       email: plan.userData.email,
       plans: [],
       favorites: [],
-      lastViewed: []
+      lastViewed: [],
+      planHistory: []
+    };
+
+    // Create history entry for plan creation
+    const historyEntry: PlanHistoryEntry = {
+      planId: plan.planId,
+      action: 'created',
+      timestamp: new Date().toISOString(),
+      details: `Created ${plan.mealPlans.length}-day meal plan`
     };
 
     const updatedHistory: UserHistory = {
@@ -54,6 +63,7 @@ export const addPlanToHistory = async (userId: string, plan: DietPlan) => {
       plans: [...currentHistory.plans, plan],
       favorites: currentHistory.favorites,
       lastViewed: [plan.planId, ...currentHistory.lastViewed].slice(0, 10),
+      planHistory: [...(currentHistory.planHistory || []), historyEntry]
     };
 
     await createDocument(collections.userHistory, userId, updatedHistory);
@@ -80,13 +90,22 @@ export const toggleFavoritePlan = async (userId: string, planId: string) => {
       throw new Error('User history not found');
     }
 
-    const updatedFavorites = history.favorites.includes(planId)
+    const isFavorite = history.favorites.includes(planId);
+    const updatedFavorites = isFavorite
       ? history.favorites.filter(id => id !== planId)
       : [...history.favorites, planId];
+
+    // Create history entry for favorite action
+    const historyEntry: PlanHistoryEntry = {
+      planId,
+      action: isFavorite ? 'unfavorited' : 'favorited',
+      timestamp: new Date().toISOString()
+    };
 
     const updatedHistory: UserHistory = {
       ...history,
       favorites: updatedFavorites,
+      planHistory: [...(history.planHistory || []), historyEntry]
     };
 
     await updateDocument(collections.userHistory, userId, updatedHistory);
@@ -113,6 +132,24 @@ export const getRecentPlans = async (userId: string, limit = 5): Promise<DietPla
   try {
     const history = await getUserHistory(userId);
     if (!history) return [];
+
+    // Add view history entry for the first plan (most recent)
+    if (history.lastViewed.length > 0) {
+      const mostRecentPlanId = history.lastViewed[0];
+      // Create history entry for plan view
+      const historyEntry: PlanHistoryEntry = {
+        planId: mostRecentPlanId,
+        action: 'viewed',
+        timestamp: new Date().toISOString()
+      };
+
+      // Update history with view record
+      const updatedHistory: UserHistory = {
+        ...history,
+        planHistory: [...(history.planHistory || []), historyEntry]
+      };
+      await updateDocument(collections.userHistory, userId, updatedHistory);
+    }
 
     return history.plans
       .filter(plan => history.lastViewed.includes(plan.planId))
@@ -173,4 +210,46 @@ export const checkEmailVerification = async (user: User): Promise<boolean> => {
     console.error('Error checking email verification:', error);
     throw error;
   }
-}; 
+};
+
+/**
+ * Get plan history for a user
+ * @param userId User ID to get history for
+ * @param limit Optional limit on number of entries to return
+ * @returns Array of plan history entries sorted by timestamp (newest first)
+ */
+export const getPlanHistory = async (userId: string, limit?: number): Promise<PlanHistoryEntry[]> => {
+  try {
+    const history = await getUserHistory(userId);
+    if (!history || !history.planHistory) return [];
+
+    const sortedHistory = [...history.planHistory].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    
+    return limit ? sortedHistory.slice(0, limit) : sortedHistory;
+  } catch (error) {
+    console.error('Error getting plan history:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get plan history for a specific plan
+ * @param userId User ID
+ * @param planId Plan ID to get history for
+ * @returns Array of history entries for the plan
+ */
+export const getPlanHistoryByPlanId = async (userId: string, planId: string): Promise<PlanHistoryEntry[]> => {
+  try {
+    const history = await getUserHistory(userId);
+    if (!history || !history.planHistory) return [];
+
+    return history.planHistory
+      .filter(entry => entry.planId === planId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } catch (error) {
+    console.error('Error getting plan history by plan ID:', error);
+    throw error;
+  }
+};

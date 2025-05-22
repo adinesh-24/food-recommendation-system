@@ -223,14 +223,7 @@ const About = () => {
       <section className="py-20 bg-nutrition-green/10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="md:w-1/3">
-              <img 
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-                alt="Dinesh A" 
-                className="rounded-full w-48 h-48 object-cover mx-auto border-4 border-white shadow-xl"
-              />
-            </div>
-            <div className="md:w-2/3 text-center md:text-left">
+            <div className="md:w-full text-center md:text-left">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Meet Our Founder</h2>
               <p className="text-xl text-gray-600 mb-6">
                 Dinesh A is passionate about combining AI technology with nutritional science to create solutions that make healthy eating accessible to everyone.

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx @modelcontextprotocol/server-postgres",
+      "env": {
+        "DATABASE_URL": "postgresql://postgres.zwneequgyouimrsmslpj:Vasanth@1979@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres",
+        "NODE_ENV": "development",
+        "MCP_SERVER_PORT": "3001"
+      },
+      "retry": {
+        "maxAttempts": 3,
+        "delay": 1000
+      }
+    }
+  }
+} 

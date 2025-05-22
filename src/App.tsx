@@ -9,6 +9,7 @@ import MyPlans from "./pages/MyPlans";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
+import PlanHistoryPage from "./pages/PlanHistoryPage";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import { initializeFirestoreCollections } from "./config/initFirestore";
@@ -42,6 +43,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/generate" element={<Index />} />
+            <Route path="/plan-history" element={<PlanHistoryPage />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/my-plans" element={<MyPlans />} />
             <Route path="/login" element={<Login />} />

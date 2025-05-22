@@ -2,14 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { DietPlan, MealPlan } from "@/types";
 import { 
   Clock, Egg, EggFried, Salad, Carrot, Info, ChefHat, Calendar, 
   Download, Share2, Printer, ChevronLeft, ChevronRight, Heart,
   Timer, Users, UtensilsCrossed, Bookmark, Star, Check, AlertTriangle, 
-  Flame, BarChart, X
+  Flame, BarChart, X, Save
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { trackPlanCreated } from "@/services/planHistoryService";
 import {
   Dialog,
   DialogContent,
@@ -423,7 +426,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
 
       {/* Enhanced Recipe Dialog */}
       <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto p-0">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
           <div className="relative h-64">
             <img 
               src={getMealImage()} 
@@ -485,7 +488,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
                 </RecipeTabsTrigger>
               </RecipeTabsList>
               
-              <RecipeTabsContent value="ingredients" className="p-2">
+              <RecipeTabsContent value="ingredients" className="p-2 max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 text-gray-800">Ingredients</h3>
@@ -536,7 +539,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
                 </div>
               </RecipeTabsContent>
               
-              <RecipeTabsContent value="instructions" className="p-2">
+              <RecipeTabsContent value="instructions" className="p-2 max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                 <h3 className="text-lg font-medium mb-4 text-gray-800">Cooking Method</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                   <div className="md:col-span-3">
@@ -604,7 +607,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
                 </div>
               </RecipeTabsContent>
               
-              <RecipeTabsContent value="nutrition" className="p-2">
+              <RecipeTabsContent value="nutrition" className="p-2 max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 text-gray-800">Nutrition Facts</h3>
@@ -746,26 +749,76 @@ const CheckIcon = ({ size, className }: { size: number; className?: string }) =>
   </svg>
 );
 
-const DietPlanDisplay: React.FC<DietPlanDisplayProps> = ({ dietPlan }) => {
+const DietPlanDisplay = ({ dietPlan }: DietPlanDisplayProps) => {
   const [activeDay, setActiveDay] = useState("1");
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [shareSuccess, setShareSuccess] = useState(false);
+  const [shareError, setShareError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const { toast } = useToast();
-  
-  // Ensure mealPlans is an array
-  const mealPlans = Array.isArray(dietPlan.mealPlans) ? dietPlan.mealPlans : [];
-  
-  // Find the current meal plan based on activeDay
-  const currentMealPlan = mealPlans.length > 0 
-    ? mealPlans.find(plan => plan.day === parseInt(activeDay)) || mealPlans[0]
-    : null;
+  const { user } = useAuth();
+
+  const handleFavoriteClick = () => {
+    const newFavoriteState = !isFavorite;
+    setIsFavorite(newFavoriteState);
+
+    if (newFavoriteState) {
+      toast({
+        title: "Added to favorites",
+        description: "Meal added to your favorites",
+      });
+    } else {
+      toast({
+        title: "Removed from favorites",
+        description: "Meal removed from your favorites",
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save this plan to your history.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      await trackPlanCreated(user.uid, dietPlan);
+      setIsSaved(true);
+      toast({
+        title: "Plan saved",
+        description: "This meal plan has been saved to your history.",
+      });
+      
+      // Navigate to plan history page after saving
+      window.location.href = "/plan-history";
+    } catch (error) {
+      console.error('Error saving plan to history:', error);
+      toast({
+        title: "Save failed",
+        description: error instanceof Error ? error.message : "Failed to save plan to history. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
     toast({
-      title: "Print",
-      description: "Printing your diet plan",
+      title: "Print initiated",
+      description: "Your diet plan is being sent to your printer.",
     });
   };
-
+  
   const handleShare = async () => {
     try {
       if (navigator.share) {
@@ -809,6 +862,14 @@ const DietPlanDisplay: React.FC<DietPlanDisplayProps> = ({ dietPlan }) => {
     }
   };
 
+  // Ensure mealPlans is an array
+  const mealPlans = Array.isArray(dietPlan.mealPlans) ? dietPlan.mealPlans : [];
+  
+  // Find the current meal plan based on activeDay
+  const currentMealPlan = mealPlans.length > 0 
+    ? mealPlans.find(plan => plan.day === parseInt(activeDay)) || mealPlans[0]
+    : null;
+
   // If no meal plans are available, show a message
   if (mealPlans.length === 0) {
     return (
@@ -835,17 +896,39 @@ const DietPlanDisplay: React.FC<DietPlanDisplayProps> = ({ dietPlan }) => {
           <p className="text-gray-600 mt-1">Customized for your dietary needs and preferences</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handlePrint} className="gap-2">
-            <Printer size={16} />
-            Print
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={handleSave} 
+            disabled={isSaving || isSaved}
+            title={isSaved ? "Plan saved to history" : "Save plan to history"}
+            className={isSaved ? "bg-green-50 border-green-200 text-green-600" : ""}
+          >
+            {isSaving ? (
+              <span className="animate-spin">⏳</span>
+            ) : isSaved ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
           </Button>
-          <Button variant="outline" onClick={handleShare} className="gap-2">
-            <Share2 size={16} />
-            Share
+          <Button variant="outline" size="icon" onClick={handlePrint} title="Print plan">
+            <Printer className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={handleShare} title="Share plan">
+            <Share2 className="h-4 w-4" />
           </Button>
           <Button variant="outline" onClick={() => window.location.reload()} className="gap-2">
             <Calendar size={16} />
             New Plan
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => window.location.href = "/plan-history"} 
+            className="gap-2"
+          >
+            <Clock size={16} />
+            View History
           </Button>
         </div>
       </div>
@@ -896,17 +979,19 @@ const DietPlanDisplay: React.FC<DietPlanDisplayProps> = ({ dietPlan }) => {
                 <div className="w-4 h-4 rounded-full bg-gradient-to-r from-purple-500 to-nutrition-green mr-2"></div>
                 <span className="text-xs text-gray-500">Gemini AI Generated Days</span>
               </div>
-              <TabsList className="bg-white p-1 border border-gray-100">
-                {mealPlans.map((plan) => (
-                  <TabsTrigger 
-                    key={plan.day} 
-                    value={plan.day.toString()}
-                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-nutrition-green data-[state=active]:text-white"
-                  >
-                    Day {plan.day}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className="overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+                <TabsList className="bg-white p-1 border border-gray-100 flex-nowrap" style={{ minWidth: 'max-content' }}>
+                  {mealPlans.map((plan) => (
+                    <TabsTrigger 
+                      key={plan.day} 
+                      value={plan.day.toString()}
+                      className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-nutrition-green data-[state=active]:text-white"
+                    >
+                      Day {plan.day}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
             </div>
           </div>
           <Button
@@ -991,38 +1076,39 @@ const DietPlanDisplay: React.FC<DietPlanDisplayProps> = ({ dietPlan }) => {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-              <div className="col-span-full">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">Breakfast</h3>
+            <div className="max-h-[600px] overflow-y-auto pr-2 mb-6" style={{ scrollbarWidth: 'thin' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div className="col-span-full">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Breakfast</h3>
+                </div>
+                <MealCard
+                  title="Breakfast"
+                  description={plan.meals.breakfast}
+                  cuisine={dietPlan.userData.cuisinePreference as CuisineType}
+                />
               </div>
-              <MealCard
-                title="Breakfast"
-                description={plan.meals.breakfast}
-                cuisine={dietPlan.userData.cuisinePreference as CuisineType}
-              />
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-              <div className="col-span-full">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">Lunch</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div className="col-span-full">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Lunch</h3>
+                </div>
+                <MealCard
+                  title="Lunch"
+                  description={plan.meals.lunch}
+                  cuisine={dietPlan.userData.cuisinePreference as CuisineType}
+                />
               </div>
-              <MealCard
-                title="Lunch"
-                description={plan.meals.lunch}
-                cuisine={dietPlan.userData.cuisinePreference as CuisineType}
-              />
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-              <div className="col-span-full">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">Dinner</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div className="col-span-full">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Dinner</h3>
+                </div>
+                <MealCard
+                  title="Dinner"
+                  description={plan.meals.dinner}
+                  cuisine={dietPlan.userData.cuisinePreference as CuisineType}
+                />
               </div>
-              <MealCard
-                title="Dinner"
-                description={plan.meals.dinner}
-                cuisine={dietPlan.userData.cuisinePreference as CuisineType}
-              />
-            </div>
 
             {plan.meals.snacks && plan.meals.snacks.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -1039,6 +1125,7 @@ const DietPlanDisplay: React.FC<DietPlanDisplayProps> = ({ dietPlan }) => {
                 ))}
               </div>
             )}
+            </div>
           </TabsContent>
         ))}
       </Tabs>

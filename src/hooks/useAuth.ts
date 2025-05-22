@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { signInWithPopup, signOut as firebaseSignOut, User, onAuthStateChanged } from 'firebase/auth';
+import { 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  User, 
+  onAuthStateChanged,
+  signInWithRedirect, 
+  getRedirectResult 
+} from 'firebase/auth';
 import { auth, googleProvider } from '@/config/firebase';
 import { checkEmailVerification, getUserProfile, createUserProfile } from '@/services/userService';
 import { UserProfile } from '@/types';
@@ -12,59 +19,68 @@ export const useAuth = () => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        try {
-          // Check email verification
-          const verified = await checkEmailVerification(user);
-          setIsEmailVerified(verified);
-
-          // Get or create user profile
-          let profile = await getUserProfile(user.uid);
-          if (!profile) {
-            profile = await createUserProfile(user.uid, user.email!, user.displayName || undefined);
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          const user = result.user;
+          setUser(user);
+          if (user) {
+            try {
+              const verified = await checkEmailVerification(user);
+              setIsEmailVerified(verified);
+              let profile = await getUserProfile(user.uid);
+              if (!profile) {
+                profile = await createUserProfile(user.uid, user.email!, user.displayName || undefined);
+              }
+              setUserProfile(profile);
+            } catch (err) {
+              console.error('Error processing redirect user data:', err);
+              setError(err instanceof Error ? err.message : 'Error processing redirect user data');
+            }
           }
-          setUserProfile(profile);
-        } catch (err) {
-          console.error('Error loading user data:', err);
-          setError(err instanceof Error ? err.message : 'Error loading user data');
         }
-      } else {
-        setUserProfile(null);
-        setIsEmailVerified(false);
-      }
-      setLoading(false);
-    });
+      })
+      .catch((error) => {
+        console.error('Error from getRedirectResult:', error);
+        setError(error.message || 'Error during redirect sign-in.');
+      })
+      .finally(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+          setUser(currentUser);
+          if (currentUser) {
+            if (!userProfile) { 
+              try {
+                const verified = await checkEmailVerification(currentUser);
+                setIsEmailVerified(verified);
+                let profile = await getUserProfile(currentUser.uid);
+                if (!profile) {
+                  profile = await createUserProfile(currentUser.uid, currentUser.email!, currentUser.displayName || undefined);
+                }
+                setUserProfile(profile);
+              } catch (err) {
+                console.error('Error loading user data in onAuthStateChanged:', err);
+                setError(err instanceof Error ? err.message : 'Error loading user data');
+              }
+            }
+          } else {
+            setUserProfile(null);
+            setIsEmailVerified(false);
+          }
+          setLoading(false); 
+        });
+        return () => unsubscribe();
+      });
 
-    return () => unsubscribe();
-  }, []);
+  }, [userProfile]); 
 
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await signInWithPopup(auth, googleProvider);
-      setUser(result.user);
-      setIsEmailVerified(result.user.emailVerified);
-
-      // Get or create user profile for Google sign-in
-      let profile = await getUserProfile(result.user.uid);
-      if (!profile) {
-        profile = await createUserProfile(
-          result.user.uid,
-          result.user.email!,
-          result.user.displayName || undefined
-        );
-      }
-      setUserProfile(profile);
-
-      return result.user;
+      await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during sign in');
-      throw err;
+      setError(err instanceof Error ? err.message : 'An error occurred during sign in initiation');
     } finally {
-      setLoading(false);
     }
   };
 

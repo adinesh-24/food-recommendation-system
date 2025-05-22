@@ -8,17 +8,43 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, UtensilsCrossed, Clock, Calendar, ArrowRight, Edit, Check } from "lucide-react";
 import LoadingCard from "@/components/LoadingCard";
 import { formatDistanceToNow } from "date-fns";
+import { updateUserProfile } from "../services/userService";
+import { UserProfile as UserProfileType } from "@/types";
 
 const Profile = () => {
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, setUserProfile } = useAuth();
   const { userPlans, loadUserPlans, isLoading } = useDietPlan();
   const [loadingPlans, setLoadingPlans] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const [defaultDietaryPreference, setDefaultDietaryPreference] = useState('');
+  const [defaultCuisinePreference, setDefaultCuisinePreference] = useState('');
+  const [allergiesInput, setAllergiesInput] = useState('');
+  const [selectedHealthIssues, setSelectedHealthIssues] = useState<string[]>([]);
+  const [otherHealthIssueText, setOtherHealthIssueText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      setDefaultDietaryPreference(userProfile.defaultDietaryPreference || '');
+      setDefaultCuisinePreference(userProfile.defaultCuisinePreference || '');
+      setAllergiesInput((userProfile.defaultAllergies || []).join(', '));
+      
+      const currentHealthIssues = userProfile.healthIssues || [];
+      setSelectedHealthIssues(currentHealthIssues.filter(issue => !issue.startsWith('Other: ')));
+      const otherIssue = currentHealthIssues.find(issue => issue.startsWith('Other: '));
+      if (otherIssue) {
+        setSelectedHealthIssues(prev => [...prev, 'Other']);
+        setOtherHealthIssueText(otherIssue.replace('Other: ', ''));
+      }
+    }
+  }, [userProfile]);
 
   useEffect(() => {
     // Check if user is logged in
@@ -66,6 +92,95 @@ const Profile = () => {
   const recentPlans = [...(userPlans || [])].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }).slice(0, 3);
+
+  const handleHealthIssueChange = (issue: string, checked: boolean) => {
+    if (checked) {
+      if (issue === 'None') {
+        setSelectedHealthIssues(['None']);
+        setOtherHealthIssueText(''); // Clear other text if None is selected
+      } else {
+        // If 'None' was selected, remove it. Add the new issue.
+        setSelectedHealthIssues(prev => [...prev.filter(i => i !== 'None'), issue]);
+      }
+    } else {
+      // If unchecking an issue
+      setSelectedHealthIssues(prev => prev.filter((i) => i !== issue));
+      if (issue === 'Other') {
+        setOtherHealthIssueText(''); // Clear other text if 'Other' is unchecked
+      }
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to save preferences.",
+      });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const processedAllergies = allergiesInput.split(',').map((a) => a.trim()).filter(a => a !== '');
+      
+      let finalHealthIssues: string[] = [];
+      if (selectedHealthIssues.includes('None')) {
+        finalHealthIssues = ['None'];
+      } else {
+        finalHealthIssues = selectedHealthIssues.filter(issue => issue !== 'Other'); // Start with non-Other issues
+        if (selectedHealthIssues.includes('Other') && otherHealthIssueText.trim() !== '') {
+          finalHealthIssues.push(`Other: ${otherHealthIssueText.trim()}`);
+        }
+      }
+      if (finalHealthIssues.length === 0 && !selectedHealthIssues.includes('None')) {
+        // If no specific issues are selected, and 'None' isn't explicitly chosen,
+        // it's good practice to store an empty array or a default like 'None' if that's the app logic.
+        // For now, let's store an empty array if nothing is actively selected over 'None'.
+      } else if (finalHealthIssues.length > 1 && finalHealthIssues.includes('None')){
+        //This case should ideally not happen due to the logic in handleHealthIssueChange
+        //but as a safeguard, if 'None' is present with others, prioritize 'None'.
+        finalHealthIssues = ['None'];
+      }
+
+      const userProfileUpdateData: Partial<UserProfileType> = {
+        defaultDietaryPreference: defaultDietaryPreference || null, // Store null if empty
+        defaultCuisinePreference: defaultCuisinePreference || null, // Store null if empty
+        defaultAllergies: processedAllergies,
+        healthIssues: finalHealthIssues,
+      };
+
+      // console.log("Saving data:", userProfileUpdateData); // For debugging
+
+      const updatedProfile = await updateUserProfile(user.uid, userProfileUpdateData);
+      
+      if (updatedProfile) {
+        setUserProfile(updatedProfile); // Update local auth context state
+        toast({
+          title: "Preferences Saved",
+          description: "Your preferences have been successfully saved.",
+        });
+      } else {
+        // This case might happen if updateUserProfile doesn't return the updated profile
+        // or if there's an issue not caught by the try-catch block (less likely with await)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to save preferences. Profile data might be inconsistent.",
+        });
+      }
+
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Saving Preferences",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -278,17 +393,20 @@ const Profile = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form className="space-y-4">
+                  <form className="space-y-6"> 
                     <div>
                       <Label htmlFor="dietary-preference">Default Dietary Preference</Label>
                       <select
                         id="dietary-preference"
+                        value={defaultDietaryPreference} 
+                        onChange={(e) => setDefaultDietaryPreference(e.target.value)} 
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
                       >
-                        <option>Vegetarian</option>
-                        <option>Vegan</option>
-                        <option>Pescatarian</option>
-                        <option>Non-vegetarian</option>
+                        <option value="">Select...</option>
+                        <option value="Vegetarian">Vegetarian</option>
+                        <option value="Vegan">Vegan</option>
+                        <option value="Pescatarian">Pescatarian</option>
+                        <option value="Non-vegetarian">Non-vegetarian</option>
                       </select>
                     </div>
                     
@@ -296,22 +414,69 @@ const Profile = () => {
                       <Label htmlFor="cuisine-preference">Cuisine Preference</Label>
                       <select
                         id="cuisine-preference"
+                        value={defaultCuisinePreference} 
+                        onChange={(e) => setDefaultCuisinePreference(e.target.value)} 
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
                       >
-                        <option>North Indian</option>
-                        <option>South Indian</option>
-                        <option>Both</option>
+                        <option value="">Select...</option>
+                        <option value="North Indian">North Indian</option>
+                        <option value="South Indian">South Indian</option>
+                        <option value="Both">Both</option>
                       </select>
                     </div>
                     
                     <div>
                       <Label htmlFor="allergies">Allergies (comma separated)</Label>
-                      <Input id="allergies" placeholder="e.g., peanuts, dairy, shellfish" />
+                      <Input 
+                        id="allergies" 
+                        placeholder="e.g., peanuts, dairy, shellfish" 
+                        value={allergiesInput} 
+                        onChange={(e) => setAllergiesInput(e.target.value)} 
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Health Issues</Label>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="health-heart"
+                          checked={selectedHealthIssues.includes('Heart Problem')}
+                          onCheckedChange={(checked) => handleHealthIssueChange('Heart Problem', !!checked)}
+                        />
+                        <Label htmlFor="health-heart" className="font-normal">Heart Problem</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="health-none"
+                          checked={selectedHealthIssues.includes('None')}
+                          onCheckedChange={(checked) => handleHealthIssueChange('None', !!checked)}
+                        />
+                        <Label htmlFor="health-none" className="font-normal">None</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="health-other"
+                          checked={selectedHealthIssues.includes('Other')}
+                          onCheckedChange={(checked) => handleHealthIssueChange('Other', !!checked)}
+                        />
+                        <Label htmlFor="health-other" className="font-normal">Other</Label>
+                      </div>
+                      {selectedHealthIssues.includes('Other') && (
+                        <Input 
+                          id="health-other-text"
+                          placeholder="Please specify other health issue"
+                          value={otherHealthIssueText}
+                          onChange={(e) => setOtherHealthIssueText(e.target.value)}
+                          className="mt-1"
+                        />
+                      )}
                     </div>
                   </form>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full">Save Preferences</Button>
+                  <Button className="w-full" onClick={handleSavePreferences} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save Preferences'}
+                  </Button>
                 </CardFooter>
               </Card>
             </TabsContent>

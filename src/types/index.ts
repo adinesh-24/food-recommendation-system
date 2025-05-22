@@ -53,6 +53,10 @@ export interface UserProfile {
   emailVerified: boolean;
   createdAt: string;
   lastLogin: string;
+  defaultDietaryPreference?: string;
+  defaultCuisinePreference?: string;
+  defaultAllergies?: string[];
+  healthIssues?: string[];
 }
 
 export interface UserHistory {
@@ -60,6 +64,14 @@ export interface UserHistory {
   plans: DietPlan[];
   favorites: string[]; // Array of planIds
   lastViewed: string[];
+  planHistory?: PlanHistoryEntry[];
+}
+
+export interface PlanHistoryEntry {
+  planId: string;
+  action: 'created' | 'modified' | 'viewed' | 'favorited' | 'unfavorited' | 'deleted' | 'retrieved_plan';
+  timestamp: string;
+  details?: string;
 }
 
 export interface UnsplashImage {
