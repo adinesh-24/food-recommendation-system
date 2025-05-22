@@ -300,19 +300,6 @@ const PlanHistoryPage: React.FC = () => {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Plan History</h1>
       
-      {/* Activity Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Created</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-green-500">{activitySummary.created || 0}</p>
-            <p className="text-sm text-gray-500">meal plans</p>
-          </CardContent>
-        </Card>
-      </div>
-      
       {/* Filters */}
       <Card className="mb-6">
         <CardHeader>
@@ -493,7 +480,7 @@ const PlanHistoryPage: React.FC = () => {
       </Card>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {selectedPlanDetails?.userData?.dietaryPreference 
@@ -508,7 +495,7 @@ const PlanHistoryPage: React.FC = () => {
               </DialogDescription>
             )}
           </DialogHeader>
-          <ScrollArea className="flex-grow pr-2 max-h-[70vh]" style={{ scrollbarWidth: 'thin' }}>
+          <ScrollArea className="flex-grow pr-4" style={{ scrollbarWidth: 'thin' }}>
             {isLoadingModal && (
               <div className="flex justify-center items-center h-40">
                 <RefreshCw className="h-8 w-8 animate-spin text-nutrition-green" />
@@ -541,29 +528,29 @@ const PlanHistoryPage: React.FC = () => {
                         <ScrollBar orientation="horizontal" />
                       </ScrollArea>
                       {selectedPlanDetails.mealPlans.map((dailyPlan, index) => (
-                        <TabsContent key={`day-content-${index}`} value={`day-${index}`} className="max-h-[300px] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
+                        <TabsContent key={`day-content-${index}`} value={`day-${index}`} className="max-h-[300px] overflow-auto" style={{ scrollbarWidth: 'thin' }}>
                           <Card className="mb-3">
-                            <CardHeader className="pb-2 pt-4">
+                            <CardHeader className="pb-2 pt-4 sticky top-0 bg-white z-10">
                               <CardTitle className="text-md flex items-center">
                                 {getDietIcon(selectedPlanDetails.userData?.dietaryPreference)} 
                                 <span className="ml-2">Day {dailyPlan.day} Meals</span>
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
-                              <div className="p-2 border border-gray-100 rounded-md hover:bg-gray-50 transition-colors">
+                              <div className="p-3 border rounded-md hover:bg-gray-50">
                                 <p className="font-medium text-nutrition-green mb-1">Breakfast</p>
                                 <p>{dailyPlan.meals.breakfast}</p>
                               </div>
-                              <div className="p-2 border border-gray-100 rounded-md hover:bg-gray-50 transition-colors">
+                              <div className="p-3 border rounded-md hover:bg-gray-50">
                                 <p className="font-medium text-nutrition-green mb-1">Lunch</p>
                                 <p>{dailyPlan.meals.lunch}</p>
                               </div>
-                              <div className="p-2 border border-gray-100 rounded-md hover:bg-gray-50 transition-colors">
+                              <div className="p-3 border rounded-md hover:bg-gray-50">
                                 <p className="font-medium text-nutrition-green mb-1">Dinner</p>
                                 <p>{dailyPlan.meals.dinner}</p>
                               </div>
                               {dailyPlan.meals.snacks && dailyPlan.meals.snacks.length > 0 && (
-                                <div className="p-2 border border-gray-100 rounded-md hover:bg-gray-50 transition-colors">
+                                <div className="p-3 border rounded-md hover:bg-gray-50">
                                   <p className="font-medium text-nutrition-green mb-1">Snacks</p>
                                   <p>{dailyPlan.meals.snacks.join(', ')}</p>
                                 </div>

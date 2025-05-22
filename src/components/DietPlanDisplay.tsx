@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { DietPlan, MealPlan } from "@/types";
 import { 
   Clock, Egg, EggFried, Salad, Carrot, Info, ChefHat, Calendar, 
@@ -426,7 +425,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
 
       {/* Enhanced Recipe Dialog */}
       <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto p-0">
           <div className="relative h-64">
             <img 
               src={getMealImage()} 
@@ -488,7 +487,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
                 </RecipeTabsTrigger>
               </RecipeTabsList>
               
-              <RecipeTabsContent value="ingredients" className="p-2 max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+              <RecipeTabsContent value="ingredients" className="p-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 text-gray-800">Ingredients</h3>
@@ -539,7 +538,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
                 </div>
               </RecipeTabsContent>
               
-              <RecipeTabsContent value="instructions" className="p-2 max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+              <RecipeTabsContent value="instructions" className="p-2">
                 <h3 className="text-lg font-medium mb-4 text-gray-800">Cooking Method</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                   <div className="md:col-span-3">
@@ -607,7 +606,7 @@ const MealCard = ({ title, description, cuisine }: { title: string; description:
                 </div>
               </RecipeTabsContent>
               
-              <RecipeTabsContent value="nutrition" className="p-2 max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+              <RecipeTabsContent value="nutrition" className="p-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 text-gray-800">Nutrition Facts</h3>
@@ -796,9 +795,6 @@ const DietPlanDisplay = ({ dietPlan }: DietPlanDisplayProps) => {
         title: "Plan saved",
         description: "This meal plan has been saved to your history.",
       });
-      
-      // Navigate to plan history page after saving
-      window.location.href = "/plan-history";
     } catch (error) {
       console.error('Error saving plan to history:', error);
       toast({
@@ -922,14 +918,6 @@ const DietPlanDisplay = ({ dietPlan }: DietPlanDisplayProps) => {
             <Calendar size={16} />
             New Plan
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.href = "/plan-history"} 
-            className="gap-2"
-          >
-            <Clock size={16} />
-            View History
-          </Button>
         </div>
       </div>
 
@@ -979,19 +967,17 @@ const DietPlanDisplay = ({ dietPlan }: DietPlanDisplayProps) => {
                 <div className="w-4 h-4 rounded-full bg-gradient-to-r from-purple-500 to-nutrition-green mr-2"></div>
                 <span className="text-xs text-gray-500">Gemini AI Generated Days</span>
               </div>
-              <div className="overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
-                <TabsList className="bg-white p-1 border border-gray-100 flex-nowrap" style={{ minWidth: 'max-content' }}>
-                  {mealPlans.map((plan) => (
-                    <TabsTrigger 
-                      key={plan.day} 
-                      value={plan.day.toString()}
-                      className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-nutrition-green data-[state=active]:text-white"
-                    >
-                      Day {plan.day}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
+              <TabsList className="bg-white p-1 border border-gray-100">
+                {mealPlans.map((plan) => (
+                  <TabsTrigger 
+                    key={plan.day} 
+                    value={plan.day.toString()}
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-nutrition-green data-[state=active]:text-white"
+                  >
+                    Day {plan.day}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
             </div>
           </div>
           <Button
@@ -1076,39 +1062,38 @@ const DietPlanDisplay = ({ dietPlan }: DietPlanDisplayProps) => {
               )}
             </div>
 
-            <div className="max-h-[600px] overflow-y-auto pr-2 mb-6" style={{ scrollbarWidth: 'thin' }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                <div className="col-span-full">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Breakfast</h3>
-                </div>
-                <MealCard
-                  title="Breakfast"
-                  description={plan.meals.breakfast}
-                  cuisine={dietPlan.userData.cuisinePreference as CuisineType}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="col-span-full">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Breakfast</h3>
               </div>
+              <MealCard
+                title="Breakfast"
+                description={plan.meals.breakfast}
+                cuisine={dietPlan.userData.cuisinePreference as CuisineType}
+              />
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                <div className="col-span-full">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Lunch</h3>
-                </div>
-                <MealCard
-                  title="Lunch"
-                  description={plan.meals.lunch}
-                  cuisine={dietPlan.userData.cuisinePreference as CuisineType}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="col-span-full">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Lunch</h3>
               </div>
+              <MealCard
+                title="Lunch"
+                description={plan.meals.lunch}
+                cuisine={dietPlan.userData.cuisinePreference as CuisineType}
+              />
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                <div className="col-span-full">
-                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Dinner</h3>
-                </div>
-                <MealCard
-                  title="Dinner"
-                  description={plan.meals.dinner}
-                  cuisine={dietPlan.userData.cuisinePreference as CuisineType}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="col-span-full">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Dinner</h3>
               </div>
+              <MealCard
+                title="Dinner"
+                description={plan.meals.dinner}
+                cuisine={dietPlan.userData.cuisinePreference as CuisineType}
+              />
+            </div>
 
             {plan.meals.snacks && plan.meals.snacks.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -1125,7 +1110,6 @@ const DietPlanDisplay = ({ dietPlan }: DietPlanDisplayProps) => {
                 ))}
               </div>
             )}
-            </div>
           </TabsContent>
         ))}
       </Tabs>
